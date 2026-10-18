@@ -56,18 +56,29 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 |   $database variable.
 |   Example: $database['another_example'] = array('key' => 'value')
 */
-
+/*
 $database['main'] = array(
-    'driver'	=> getenv('DB_DRIVER') ?: '',
-    'hostname'	=> getenv('DB_HOST') ?: '',
-    'port'		=> getenv('DB_PORT') ?: '',
-    'username'	=> getenv('DB_USER') ?: '',
+    'driver'	=> getenv('DB_DRIVER') ?: 'mysql',
+    'hostname'	=> getenv('DB_HOST') ?: 'localhost',
+    'port'		=> getenv('DB_PORT') ?: '3306',
+    'username'	=> getenv('DB_USER') ?: 'root',
     'password'	=> getenv('DB_PASSWORD') ?: '',
-    'database'	=> getenv('DB_NAME') ?: '',
-    'charset'	=> getenv('DB_CHARSET') ?: '',
+    'database'	=> getenv('DB_NAME') ?: 'campusconnect_db',
+    'charset'	=> getenv('DB_CHARSET') ?: 'utf8mb4',
     'dbprefix'	=> getenv('DB_PREFIX') ?: '',
     // Optional for SQLite
     'path'      => ''
 );
-
+*/
+$database['main'] = array(
+    'driver'   => 'mysql',
+    'hostname' => 'localhost',
+    'port'     => '3306',
+    'username' => 'root',
+    'password' => '',
+    'database' => 'campusconnect_db',
+    'charset'  => 'utf8mb4',
+    'dbprefix' => '',
+    'path'     => ''
+);
 ?>

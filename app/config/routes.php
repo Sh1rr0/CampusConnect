@@ -45,3 +45,14 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 /** @var object $router **/
 
 $router->get('/', 'Welcome::index');
+
+$router->get('/', 'EventsController::index');
+$router->get('/events', 'EventsController::index');
+$router->get('/events/create', 'EventsController::create');
+$router->post('/events/create', 'EventsController::store');
+$router->get('/events/{id}', 'EventsController::show');
+$router->post('/events/{id}/register', 'EventsController::register');
+
+$router->get('/login', 'AuthController::login');
+$router->post('/login', 'AuthController::authenticate');
+$router->get('/logout', 'AuthController::logout');
