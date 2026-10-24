@@ -1,0 +1,16 @@
+{
+    "name": "campusconnect/app",
+    "description": "CampusConnect student organization and event management system",
+    "minimum-stability": "stable",
+    "require": {
+        "endroid/qr-code": "5.0",
+        "cloudinary/cloudinary_php": "^3.2",
+        "getbrevo/brevo-php": "^6.0",
+        "google/apiclient": "2.20"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}

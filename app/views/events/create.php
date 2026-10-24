@@ -1,15 +1,18 @@
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Create Event</title></head>
-<body>
+<?php $title = 'Create Event'; include __DIR__ . '/../partials/header.php'; ?>
 <h1>Create Event</h1>
-<form method="post" action="<?= site_url('events/create') ?>">
-  <p>Organization ID: <input type="number" name="organization_id" required></p>
-  <p>Title: <input name="title" required></p>
-  <p>Description: <textarea name="description"></textarea></p>
-  <p>Location: <input name="location" required></p>
-  <p>Start: <input type="datetime-local" name="start_at" required></p>
-  <p>End: <input type="datetime-local" name="end_at" required></p>
-  <p>Capacity: <input type="number" name="capacity"></p>
-  <button type="submit">Submit for approval</button>
+<?php if (!empty($error)): ?><div class="msg err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+<form class="card" method="post" action="<?= site_url('events/create') ?>" enctype="multipart/form-data">
+  <label>Organization</label>
+  <select name="organization_id" required>
+    <?php foreach ($orgs as $o): ?><option value="<?= $o['id'] ?>"><?= htmlspecialchars($o['organization_name']) ?></option><?php endforeach; ?>
+  </select>
+  <label>Title</label><input name="title" required>
+  <label>Description</label><textarea name="description" rows="4"></textarea>
+  <label>Location</label><input name="location" required>
+  <label>Start</label><input type="datetime-local" name="start_at" required>
+  <label>End</label><input type="datetime-local" name="end_at" required>
+  <label>Capacity (leave empty for unlimited)</label><input type="number" name="capacity" min="1">
+  <label>Poster image (uploaded to Cloudinary)</label><input type="file" name="poster" accept="image/*">
+  <button class="btn" type="submit">Save event</button>
 </form>
-</body></html>
+<?php include __DIR__ . '/../partials/footer.php'; ?>

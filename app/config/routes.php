@@ -52,7 +52,16 @@ $router->get('/events/create', 'EventsController::create');
 $router->post('/events/create', 'EventsController::store');
 $router->get('/events/{id}', 'EventsController::show');
 $router->post('/events/{id}/register', 'EventsController::register');
+$router->get('/my-events', 'EventsController::my');
 
 $router->get('/login', 'AuthController::login');
 $router->post('/login', 'AuthController::authenticate');
+$router->get('/signup', 'AuthController::signup');
+$router->post('/signup', 'AuthController::store_signup');
 $router->get('/logout', 'AuthController::logout');
+
+$router->get('/admin', 'AdminController::dashboard');
+$router->post('/admin/events/{id}/status', 'AdminController::set_status');
+$router->get('/admin/events/{id}/attendees', 'AdminController::attendees');
+$router->get('/admin/events/{id}/scan', 'AdminController::scanner');
+$router->post('/admin/checkin', 'AdminController::checkin');
