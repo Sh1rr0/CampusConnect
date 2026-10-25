@@ -44,6 +44,7 @@ class AdminController extends Controller {
 
     public function scanner($id) {
         $event = $this->EventModel->find($id);
+        header('Permissions-Policy: camera=(self)');   
         if (!$event) { show_404(); return; }
         $this->call->view('admin/scanner', array('me' => $this->me, 'event' => $event));
     }
