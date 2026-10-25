@@ -65,3 +65,8 @@ $router->post('/admin/events/{id}/status', 'AdminController::set_status');
 $router->get('/admin/events/{id}/attendees', 'AdminController::attendees');
 $router->get('/admin/events/{id}/scan', 'AdminController::scanner');
 $router->post('/admin/checkin', 'AdminController::checkin');
+
+$router->get('/admin/events/{id}/edit', 'AdminController::edit');
+$router->post('/admin/events/{id}/edit', 'AdminController::update');
+$router->post('/admin/events/{id}/delete', 'AdminController::delete');
+$router->post('/admin/events/{id}/delete-permanently', 'AdminController::delete_permanently');

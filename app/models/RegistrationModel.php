@@ -11,27 +11,41 @@ class RegistrationModel extends Model {
             'event_id' => $event_id, 'student_id' => $student_id, 'qr_token_hash' => $token_hash
         ));
     }
-    // A student's registrations with attendance status
+
+    // array(registration_id => array(slot => checked_in_at))
+    private function scans_for($ids) {
+        if (!$ids) return array();
+        $in   = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->db->raw("SELECT registration_id, slot, checked_in_at FROM attendance
+                                WHERE registration_id IN ($in)", array_values($ids))->fetchAll(PDO::FETCH_ASSOC);
+        $map = array();
+        foreach ($rows as $r) $map[$r['registration_id']][$r['slot']] = $r['checked_in_at'];
+        return $map;
+    }
+
     public function for_student($student_id) {
         $sql = "SELECT r.id, r.event_id, r.registered_at, e.title, e.location, e.description,
-                       e.start_at, e.end_at, a.checked_in_at
-                FROM registrations r
-                JOIN events e ON e.id = r.event_id
-                LEFT JOIN attendance a ON a.registration_id = r.id
+                       e.start_at, e.end_at, e.fine_per_session, e.status
+                FROM registrations r JOIN events e ON e.id = r.event_id
                 WHERE r.student_id = ? ORDER BY e.start_at ASC";
-        return $this->db->raw($sql, array($student_id))->fetchAll(PDO::FETCH_ASSOC);
+        $regs  = $this->db->raw($sql, array($student_id))->fetchAll(PDO::FETCH_ASSOC);
+        $scans = $this->scans_for(array_column($regs, 'id'));
+        foreach ($regs as &$r) $r['scans'] = $scans[$r['id']] ?? array();
+        unset($r);
+        return $regs;
     }
-    // Everyone registered for an event; checked_in_at is NULL for absentees
+
     public function attendees($event_id) {
-        $sql = "SELECT u.full_name, u.email, r.registered_at, a.checked_in_at,
-                       (a.id IS NOT NULL) AS present
-                FROM registrations r
-                JOIN users u ON u.id = r.student_id
-                LEFT JOIN attendance a ON a.registration_id = r.id
-                WHERE r.event_id = ?
-                ORDER BY present DESC, u.full_name ASC";
-        return $this->db->raw($sql, array($event_id))->fetchAll(PDO::FETCH_ASSOC);
+        $sql = "SELECT r.id, u.full_name, u.email, r.registered_at
+                FROM registrations r JOIN users u ON u.id = r.student_id
+                WHERE r.event_id = ? ORDER BY u.full_name ASC";
+        $rows  = $this->db->raw($sql, array($event_id))->fetchAll(PDO::FETCH_ASSOC);
+        $scans = $this->scans_for(array_column($rows, 'id'));
+        foreach ($rows as &$r) $r['scans'] = $scans[$r['id']] ?? array();
+        unset($r);
+        return $rows;
     }
+
     public function find_by_hash($hash) {
         $sql = "SELECT r.id, r.event_id, u.full_name, e.title
                 FROM registrations r
@@ -40,12 +54,14 @@ class RegistrationModel extends Model {
                 WHERE r.qr_token_hash = ?";
         return $this->db->raw($sql, array($hash))->fetch(PDO::FETCH_ASSOC);
     }
-    public function is_checked_in($registration_id) {
-        return (bool) $this->db->table('attendance')->where('registration_id', $registration_id)->get();
+
+    public function has_scan($registration_id, $slot) {
+        return (bool) $this->db->table('attendance')
+                    ->where('registration_id', $registration_id)->where('slot', $slot)->get();
     }
-    public function mark_present($registration_id, $scanned_by) {
+    public function mark_present($registration_id, $slot, $scanned_by) {
         return $this->db->table('attendance')->insert(array(
-            'registration_id' => $registration_id, 'scanned_by' => $scanned_by
+            'registration_id' => $registration_id, 'slot' => $slot, 'scanned_by' => $scanned_by
         ));
     }
 }

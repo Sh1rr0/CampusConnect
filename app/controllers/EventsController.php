@@ -3,6 +3,7 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 require_once __DIR__ . '/../libraries/Qr_service.php';
 require_once __DIR__ . '/../libraries/Brevo_service.php';
 require_once __DIR__ . '/../libraries/Cloudinary_service.php';
+require_once __DIR__ . '/../libraries/Fine_service.php';
 
 class EventsController extends Controller {
     public function __construct() {
@@ -62,6 +63,9 @@ class EventsController extends Controller {
             $poster = Cloudinary_service::upload($_FILES['poster']['tmp_name']);
         }
 
+        $fine = $this->io->post('fine_per_session');
+        $fine = ($fine === null || $fine === '') ? 25 : max(0, (float) $fine);
+        
         $this->EventModel->create(array(
             'organization_id' => (int) $this->io->post('organization_id'),
             'created_by'      => $me['id'],
@@ -72,9 +76,12 @@ class EventsController extends Controller {
             'end_at'          => date('Y-m-d H:i:s', $end),
             'capacity'        => (int) $this->io->post('capacity') ?: null,
             'poster_url'      => $poster,
-            'status'          => $me['role'] === 'admin' ? 'approved' : 'pending'   // organizers need admin approval
+            'status'          => $me['role'] === 'admin' ? 'approved' : 'pending',
+            'fine_per_session' => $fine
         ));
         redirect('admin');
+
+        
     }
 
     public function register($id) {
@@ -107,13 +114,16 @@ class EventsController extends Controller {
     }
 
     public function my() {
-        $me = $this->me();
-        if (!$me['id']) redirect('login');
-        $regs = $this->RegistrationModel->for_student($me['id']);
-        foreach ($regs as &$r) {
-            $r['qr'] = Qr_service::data_uri(Qr_service::token($r['event_id'], $me['id']));
-        }
-        unset($r);
-        $this->call->view('events/my', array('me' => $me, 'regs' => $regs));
+    $me = $this->me();
+    if (!$me['id']) redirect('login');
+    $regs  = $this->RegistrationModel->for_student($me['id']);
+    $total = 0;
+    foreach ($regs as &$r) {
+        $r['qr']      = Qr_service::data_uri(Qr_service::token($r['event_id'], $me['id']));
+        $r['summary'] = Fine_service::summarize($r, $r['scans']);
+        $total       += $r['summary']['fine'];
     }
+    unset($r);
+    $this->call->view('events/my', array('me' => $me, 'regs' => $regs, 'total_fines' => $total));
+}
 }

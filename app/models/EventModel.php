@@ -3,10 +3,12 @@ defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 class EventModel extends Model {
     private $base = "SELECT e.*, o.organization_name,
-        (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id) AS registered_count,
-        (SELECT COUNT(*) FROM registrations r JOIN attendance a ON a.registration_id = r.id
-          WHERE r.event_id = e.id) AS present_count
-        FROM events e JOIN organizations o ON o.id = e.organization_id";
+    (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id) AS registered_count,
+    (SELECT COUNT(DISTINCT a.registration_id) FROM registrations r
+       JOIN attendance a ON a.registration_id = r.id WHERE r.event_id = e.id) AS present_count,
+    (SELECT COUNT(*) FROM registrations r
+       JOIN attendance a ON a.registration_id = r.id WHERE r.event_id = e.id) AS scan_count
+    FROM events e JOIN organizations o ON o.id = e.organization_id";
 
     public function get_approved() {
         return $this->db->raw($this->base . " WHERE e.status = 'approved' ORDER BY e.start_at ASC")
@@ -29,5 +31,18 @@ class EventModel extends Model {
     public function create($data) { return $this->db->table('events')->insert($data); }
     public function set_status($id, $status) {
         return $this->db->table('events')->where('id', $id)->update(array('status' => $status));
+    }
+
+    public function update_event($id, $data) {
+    return $this->db->table('events')->where('id', $id)->update($data);
+    }
+    public function delete_event($id) {
+    return $this->db->table('events')->where('id', $id)->delete();
+    }
+
+    public function delete_with_records($id) {
+    $this->db->raw("DELETE a FROM attendance a JOIN registrations r ON r.id = a.registration_id WHERE r.event_id = ?", array($id));
+    $this->db->raw("DELETE FROM registrations WHERE event_id = ?", array($id));
+    $this->db->raw("DELETE FROM events WHERE id = ?", array($id));
     }
 }

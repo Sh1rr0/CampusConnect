@@ -1,9 +1,17 @@
 <?php $title = 'Scanner'; include __DIR__ . '/../partials/header.php'; ?>
 <a href="<?= site_url('admin') ?>">&larr; Dashboard</a>
 <h1>Scan attendance: <?= htmlspecialchars($event['title']) ?></h1>
+
+<label><b>Session you are scanning now</b></label>
+<select id="slot" style="max-width:420px">
+  <?php foreach (Fine_service::$slots as $key => $label): ?>
+    <option value="<?= $key ?>"><?= $label ?></option>
+  <?php endforeach; ?>
+</select>
+
 <div id="reader" style="max-width:420px"></div>
 <div id="result" class="msg" style="display:none"></div>
-<p><a class="btn" href="<?= site_url('admin/events/' . $event['id'] . '/attendees') ?>">View attendance list</a></p>
+<p><a class="btn" href="<?= site_url('admin/events/' . $event['id'] . '/attendees') ?>">View attendance and fines</a></p>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
 let busy = false;
@@ -16,6 +24,7 @@ function onScan(token) {
   const fd = new FormData();
   fd.append('token', token);
   fd.append('event_id', '<?= (int) $event['id'] ?>');
+  fd.append('slot', document.getElementById('slot').value);
   fetch('<?= site_url('admin/checkin') ?>', { method: 'POST', body: fd })
     .then(r => r.json()).then(d => showResult(d.ok, d.message))
     .catch(() => showResult(false, 'Request failed. Check your connection.'))

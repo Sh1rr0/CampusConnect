@@ -12,6 +12,7 @@
   <label>Start</label><input type="datetime-local" name="start_at" required>
   <label>End</label><input type="datetime-local" name="end_at" required>
   <label>Capacity (leave empty for unlimited)</label><input type="number" name="capacity" min="1">
+  <label>Fine per missed scan (₱)</label><input type="number" name="fine_per_session" min="0" step="0.01" value="25">
   <label>Poster image (uploaded to Cloudinary)</label><input type="file" name="poster" accept="image/*">
   <button class="btn" type="submit">Save event</button>
 </form>
