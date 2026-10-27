@@ -68,5 +68,47 @@ $router->post('/admin/checkin', 'AdminController::checkin');
 
 $router->get('/admin/events/{id}/edit', 'AdminController::edit');
 $router->post('/admin/events/{id}/edit', 'AdminController::update');
-$router->post('/admin/events/{id}/delete', 'AdminController::delete');
-$router->post('/admin/events/{id}/delete-permanently', 'AdminController::delete_permanently');
+$router->post('/admin/events/{id}/cancel', 'AdminController::cancel');
+$router->post('/admin/events/{id}/reopen', 'AdminController::reopen');
+
+// ---- auth + students ----
+$router->post('/api/login', 'ApiController::login');
+$router->post('/api/signup', 'ApiController::signup');
+$router->post('/api/logout', 'ApiController::logout');
+$router->get('/api/me', 'ApiController::me');
+$router->get('/api/programs', 'ApiController::programs');
+$router->get('/api/events', 'ApiController::events');
+$router->get('/api/events/{id}', 'ApiController::event');
+$router->post('/api/events/{id}/register', 'ApiController::register');
+$router->get('/api/my-registrations', 'ApiController::my_registrations');
+
+// ---- admin: organizations and manager accounts ----
+$router->get('/api/admin/organizations', 'ApiAdminController::organizations');
+$router->post('/api/admin/organizations', 'ApiAdminController::create_organization');
+$router->post('/api/admin/organizations/{id}/update', 'ApiAdminController::update_organization');
+$router->post('/api/admin/organizations/{id}/delete', 'ApiAdminController::delete_organization');
+$router->get('/api/admin/managers', 'ApiAdminController::managers');
+$router->post('/api/admin/managers', 'ApiAdminController::create_manager');
+$router->post('/api/admin/managers/{id}/update', 'ApiAdminController::update_manager');
+$router->post('/api/admin/managers/{id}/delete', 'ApiAdminController::delete_manager');
+
+// ---- admin + manager: events ----
+$router->get('/api/admin/events', 'ApiAdminController::events');
+$router->post('/api/admin/events', 'ApiAdminController::create_event');
+$router->post('/api/admin/events/{id}/update', 'ApiAdminController::update_event');
+$router->post('/api/admin/events/{id}/delete', 'ApiAdminController::delete_event');
+$router->post('/api/admin/events/{id}/cancel', 'ApiAdminController::cancel');
+$router->post('/api/admin/events/{id}/reopen', 'ApiAdminController::reopen');
+$router->post('/api/admin/events/{id}/status', 'ApiAdminController::set_status');
+$router->post('/api/admin/events/{id}/fine', 'ApiAdminController::set_fine');
+$router->post('/api/admin/events/{id}/request-change', 'ApiAdminController::request_change');
+$router->post('/api/admin/events/{id}/charge-fines', 'ApiAdminController::charge_fines');
+$router->get('/api/admin/events/{id}/attendees', 'ApiAdminController::attendees');
+
+// ---- change requests, attendance, fines ----
+$router->get('/api/admin/change-requests', 'ApiAdminController::change_requests');
+$router->post('/api/admin/change-requests/{id}/approve', 'ApiAdminController::approve_change');
+$router->post('/api/admin/change-requests/{id}/reject', 'ApiAdminController::reject_change');
+$router->post('/api/admin/checkin', 'ApiAdminController::checkin');
+$router->get('/api/admin/fines', 'ApiAdminController::fines');
+$router->post('/api/admin/fines/{id}/paid', 'ApiAdminController::mark_paid');

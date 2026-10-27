@@ -29,7 +29,7 @@
   <h3 style="color:#c62828">Danger zone</h3>
   <p>Permanently deletes this event with its <b><?= (int) $event['registered_count'] ?></b> registrations,
      all attendance scans and fines. This cannot be undone.
-     To keep the records, cancel the event with the normal Delete button instead.</p>
+     To keep the records, use "Cancel event" on the dashboard instead.</p>
   <form method="post" action="<?= site_url('admin/events/' . $event['id'] . '/delete-permanently') ?>"
         onsubmit="var t = prompt('This permanently deletes the event, its registrations, attendance and fines.\n\nType DELETE to confirm:'); if (t !== 'DELETE') return false; this.typed.value = t; return true;">
     <input type="hidden" name="typed" value="">

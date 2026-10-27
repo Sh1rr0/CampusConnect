@@ -47,7 +47,7 @@ class RegistrationModel extends Model {
     }
 
     public function find_by_hash($hash) {
-        $sql = "SELECT r.id, r.event_id, u.full_name, e.title
+        $sql = "SELECT r.id, r.event_id, u.full_name, e.title, e.status AS event_status
                 FROM registrations r
                 JOIN users u ON u.id = r.student_id
                 JOIN events e ON e.id = r.event_id

@@ -17,7 +17,7 @@ class AuthController extends Controller {
         $user  = $this->UserModel->find_by_email($email);
         $user  = $user ? (array) $user : null;
 
-        // Accepts real hashes (new signups) and the plain-text demo passwords
+        
         if ($user && (password_verify($pass, $user['password_hash']) || $pass === $user['password_hash'])) {
             $this->session->set_userdata(array(
                 'user_id'   => $user['id'],

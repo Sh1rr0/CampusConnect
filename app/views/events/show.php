@@ -4,12 +4,14 @@
   <h1><?= htmlspecialchars($event['title']) ?></h1>
   <p><b><?= htmlspecialchars($event['organization_name']) ?></b></p>
   <p><?= nl2br(htmlspecialchars((string) $event['description'])) ?></p>
-  <p>📍 <?= htmlspecialchars($event['location']) ?></p>
-  <p>🕒 <?= date('M d, Y g:i A', strtotime($event['start_at'])) ?> – <?= date('M d, Y g:i A', strtotime($event['end_at'])) ?></p>
+  <p><?= htmlspecialchars($event['location']) ?></p>
+  <p><?= date('M d, Y g:i A', strtotime($event['start_at'])) ?> – <?= date('M d, Y g:i A', strtotime($event['end_at'])) ?></p>
   <p>Registered: <?= (int) $event['registered_count'] ?><?= $event['capacity'] ? ' / ' . (int) $event['capacity'] : '' ?></p>
   <?php if (!empty($message)): ?><div class="msg"><?= htmlspecialchars($message) ?></div><?php endif; ?>
 
-  <?php if (empty($me['role'])): ?>
+ <?php if ($event['status'] === 'cancelled'): ?>
+  <div class="msg err">This event has been cancelled.</div>
+<?php elseif (empty($me['role'])): ?>
     <a class="btn" href="<?= site_url('login') ?>">Login to register</a>
   <?php elseif ($me['role'] === 'student'): ?>
     <?php if ($registered): ?>

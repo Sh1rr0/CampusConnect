@@ -15,14 +15,25 @@
     <td><?= (int) $e['registered_count'] ?></td>
     <td><?= (int) $e['present_count'] ?></td>
     <td><?= $ended ? Fine_service::peso($fines) : 'Pending' ?></td>
-    <td>
+   <td>
   <a class="btn" href="<?= site_url('admin/events/' . $e['id'] . '/attendees') ?>">Attendance &amp; fines</a>
-  <a class="btn green" href="<?= site_url('admin/events/' . $e['id'] . '/scan') ?>">Scan</a>
+  <?php if ($e['status'] !== 'cancelled'): ?>
+    <a class="btn green" href="<?= site_url('admin/events/' . $e['id'] . '/scan') ?>">Scan</a>
+  <?php endif; ?>
   <a class="btn gray" href="<?= site_url('admin/events/' . $e['id'] . '/edit') ?>">Edit</a>
-  <form method="post" action="<?= site_url('admin/events/' . $e['id'] . '/delete') ?>" style="display:inline"
-        onsubmit="return confirm('Delete this event? If students already registered, it will be cancelled instead.');">
-    <button class="btn red" type="submit">Delete</button>
-  </form>
+
+  <?php if ($e['status'] === 'cancelled'): ?>
+    <form method="post" action="<?= site_url('admin/events/' . $e['id'] . '/reopen') ?>" style="display:inline"
+          onsubmit="return confirm('Reopen this event?');">
+      <button class="btn green" type="submit">Reopen event</button>
+    </form>
+  <?php elseif (in_array($e['status'], array('approved', 'pending'))): ?>
+    <form method="post" action="<?= site_url('admin/events/' . $e['id'] . '/cancel') ?>" style="display:inline"
+          onsubmit="return confirm('Cancel this event? Students keep their registrations, but no fines apply while it is cancelled.');">
+      <button class="btn red" type="submit">Cancel event</button>
+    </form>
+  <?php endif; ?>
+
   <?php if ($me['role'] === 'admin' && $e['status'] === 'pending'): ?>
     <form method="post" action="<?= site_url('admin/events/' . $e['id'] . '/status') ?>" style="display:inline">
       <button class="btn green" name="status" value="approved">Approve</button>

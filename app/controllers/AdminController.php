@@ -73,6 +73,9 @@ class AdminController extends Controller {
     if ($event_id && (int) $reg['event_id'] !== $event_id) {
         echo json_encode(array('ok' => false, 'message' => 'This pass is for another event: ' . $reg['title'])); return;
     }
+    if ($reg['event_status'] === 'cancelled') {
+    echo json_encode(array('ok' => false, 'message' => 'This event is cancelled.')); return;
+    }
     $label = Fine_service::$slots[$slot];
     if ($this->RegistrationModel->has_scan($reg['id'], $slot)) {
         echo json_encode(array('ok' => false, 'message' => $reg['full_name'] . ' already has ' . $label . '.')); return;
@@ -81,7 +84,7 @@ class AdminController extends Controller {
     echo json_encode(array('ok' => true, 'message' => $label . ' recorded: ' . $reg['full_name']));
     }
 
-    // Admin can manage any event; an organizer only their own
+   
     private function can_manage($event) {
     return $this->me['role'] === 'admin' || (int) $event['created_by'] === (int) $this->me['id'];
     }
@@ -119,7 +122,7 @@ class AdminController extends Controller {
         return;
     }
 
-    $poster = $event['poster_url'];   // keep the old poster unless a new one is uploaded
+    $poster = $event['poster_url'];  
     if (!empty($_FILES['poster']['tmp_name']) && $_FILES['poster']['error'] === UPLOAD_ERR_OK
         && $_FILES['poster']['size'] < 5 * 1024 * 1024 && @getimagesize($_FILES['poster']['tmp_name'])) {
         $new = Cloudinary_service::upload($_FILES['poster']['tmp_name']);
@@ -144,22 +147,39 @@ class AdminController extends Controller {
     redirect('admin');
     }
 
-    public function delete($id) {
+    public function cancel($id) {
     $event = $this->EventModel->find($id);
+    
     if (!$event) { show_404(); return; }
     if (!$this->can_manage($event)) redirect('admin');
 
-    if ((int) $event['registered_count'] > 0) {
-        $this->EventModel->set_status($id, 'cancelled');
-        $msg = 'This event has registrations, so it was cancelled instead of deleted. Admins can delete it permanently from the Edit page.';
+    if (!in_array($event['status'], array('approved', 'pending'))) {
+        $msg = 'Only approved or pending events can be cancelled.';
     } else {
-        $this->EventModel->delete_event($id);
-        $msg = 'Event deleted.';
+        $this->EventModel->set_status($id, 'cancelled');
+        $msg = '"' . $event['title'] . '" was cancelled. Registrations are kept, and you can reopen it any time.';
     }
     $this->session->set_flashdata('message', $msg);
     redirect('admin');
     }
 
+public function reopen($id) {
+    $event = $this->EventModel->find($id);
+    if (!$event) { show_404(); return; }
+    if (!$this->can_manage($event)) redirect('admin');
+
+    if ($event['status'] !== 'cancelled') {
+        $msg = 'Only cancelled events can be reopened.';
+    } else {
+        // Admins reopen straight to approved; organizers need admin approval again
+        $new = $this->me['role'] === 'admin' ? 'approved' : 'pending';
+        $this->EventModel->set_status($id, $new);
+        $msg = '"' . $event['title'] . '" was reopened'
+             . ($new === 'pending' ? ' and is waiting for admin approval.' : ' and is live again.');
+    }
+    $this->session->set_flashdata('message', $msg);
+    redirect('admin');
+}
     public function delete_permanently($id) {
     if ($this->me['role'] !== 'admin') redirect('admin');   // admins only
     $event = $this->EventModel->find($id);

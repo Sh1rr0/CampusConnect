@@ -2,7 +2,7 @@
 class Cloudinary_service {
     private static function env($k) { $v = getenv($k); return $v !== false ? $v : ($_ENV[$k] ?? ''); }
 
-    // Signed upload over plain HTTPS. Returns the image URL, or null on failure.
+    
     public static function upload($tmpPath, $folder = 'campusconnect/posters') {
         $cloud  = self::env('CLOUDINARY_CLOUD_NAME');
         $key    = self::env('CLOUDINARY_API_KEY');

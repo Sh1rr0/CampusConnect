@@ -7,7 +7,7 @@ class Fine_service {
         'pm_out' => 'Afternoon OUT'
     );
 
-    // $scans: array(slot => checked_in_at) for ONE student in ONE event
+    
     public static function summarize($event, $scans) {
     $attended  = count(array_intersect_key($scans, self::$slots));
     $missed    = count(self::$slots) - $attended;

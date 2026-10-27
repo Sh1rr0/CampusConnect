@@ -100,7 +100,6 @@ class EventsController extends Controller {
             $this->RegistrationModel->register($id, $me['id'], Qr_service::token_hash($token));
             $msg = 'Registered! Your QR pass is under My QR Passes.';
 
-            // Confirmation email with the QR attached (Brevo). A mail failure never blocks registration.
             try {
                 $html = '<h2>You are registered: ' . htmlspecialchars($event['title']) . '</h2>'
                       . '<p>' . htmlspecialchars($event['location']) . '<br>' . date('M d, Y g:i A', strtotime($event['start_at'])) . '</p>'
