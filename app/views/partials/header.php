@@ -33,6 +33,7 @@ if (!function_exists('cal_link')) {
   <?php if (in_array($me['role'], array('admin', 'organizer'))): ?>
     <a href="<?= site_url('admin') ?>">Dashboard</a><a href="<?= site_url('events/create') ?>">Create Event</a>
   <?php endif; ?>
+  <?php if ($me['role'] === 'admin'): ?><a href="<?= site_url('admin/accounts') ?>">Accounts</a><?php endif; ?>
   <?php if ($me['name']): ?><span><?= htmlspecialchars($me['name']) ?></span><a href="<?= site_url('logout') ?>">Logout</a>
   <?php else: ?><a href="<?= site_url('login') ?>">Login</a><a href="<?= site_url('signup') ?>">Sign up</a><?php endif; ?>
 </header><main>

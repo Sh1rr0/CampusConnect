@@ -11,6 +11,8 @@ class AdminController extends Controller {
         parent::__construct();
         $this->call->model('EventModel');
         $this->call->model('RegistrationModel');
+        $this->call->model('UserModel');         
+        $this->call->model('OrganizationModel');
         $this->me = array(
             'id'   => $this->session->userdata('user_id'),
             'name' => $this->session->userdata('full_name'),
@@ -28,14 +30,29 @@ class AdminController extends Controller {
     ));
     }
 
-    public function set_status($id) {
-        if ($this->me['role'] !== 'admin') redirect('admin');
-        $status = $this->io->post('status');
-        if (in_array($status, array('approved', 'rejected', 'cancelled', 'pending'))) {
-            $this->EventModel->set_status($id, $status);
-        }
+   public function set_status($id) {
+    if ($this->me['role'] !== 'admin') redirect('admin');
+    $event = $this->EventModel->find($id);
+    if (!$event) { show_404(); return; }
+
+    $status = $this->io->post('status');
+    $note   = mb_substr(trim($this->io->post('note')), 0, 255);
+
+    if ($event['status'] !== 'pending' || !in_array($status, array('approved', 'rejected'))) {
+        $this->session->set_flashdata('message', 'This event is not waiting for review.');
         redirect('admin');
     }
+    if ($status === 'rejected' && mb_strlen($note) < 5) {
+        $this->session->set_flashdata('error', 'Write a reason (at least 5 characters) so the organization knows what to fix.');
+        redirect('admin/events/' . $id . '/review');
+    }
+
+    $this->EventModel->update_event($id, array(
+        'status' => $status, 'review_note' => $status === 'rejected' ? $note : null
+    ));
+    $this->session->set_flashdata('message', '"' . $event['title'] . '" was ' . $status . '.');
+    redirect('admin');
+}
 
     public function attendees($id) {
     $event = $this->EventModel->find($id);
@@ -143,6 +160,11 @@ class AdminController extends Controller {
         'poster_url'       => $poster,
         'fine_per_session' => $fine
     ));
+
+    if ($this->me['role'] === 'organizer' && $event['status'] === 'rejected') {
+    $this->EventModel->update_event($id, array('status' => 'pending', 'review_note' => null));
+    }
+
     $this->session->set_flashdata('message', 'Event updated.');
     redirect('admin');
     }
@@ -163,7 +185,7 @@ class AdminController extends Controller {
     redirect('admin');
     }
 
-public function reopen($id) {
+    public function reopen($id) {
     $event = $this->EventModel->find($id);
     if (!$event) { show_404(); return; }
     if (!$this->can_manage($event)) redirect('admin');
@@ -179,7 +201,7 @@ public function reopen($id) {
     }
     $this->session->set_flashdata('message', $msg);
     redirect('admin');
-}
+    }
     public function delete_permanently($id) {
     if ($this->me['role'] !== 'admin') redirect('admin');   // admins only
     $event = $this->EventModel->find($id);
@@ -195,5 +217,64 @@ public function reopen($id) {
     $this->session->set_flashdata('message',
         'Permanently deleted "' . $event['title'] . '" with ' . (int) $event['registered_count'] . ' registrations.');
     redirect('admin');
+    }
+
+    public function review($id) {
+    if ($this->me['role'] !== 'admin') redirect('admin');
+    $event = $this->EventModel->find($id);
+    if (!$event) { show_404(); return; }
+    $this->call->view('admin/review', array(
+        'me' => $this->me, 'event' => $event, 'error' => $this->session->flashdata('error')
+    ));
+    }      
+    public function accounts() {
+        if ($this->me['role'] !== 'admin') redirect('admin');
+        $this->call->view('admin/accounts', array(
+            'me' => $this->me, 'managers' => $this->UserModel->managers(),
+            'orgs' => $this->OrganizationModel->all(),
+            'message' => $this->session->flashdata('message'), 'error' => null, 'old' => array()
+        ));
+    }
+
+    public function create_account() {
+        if ($this->me['role'] !== 'admin') redirect('admin');
+
+        $name    = trim($this->io->post('full_name'));
+        $email   = trim($this->io->post('email'));
+        $pass    = $this->io->post('password');
+        $org_id  = (int) $this->io->post('organization_id');
+        $new_org = trim($this->io->post('new_organization'));
+
+        $error = null;
+        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $error = 'Enter a name and a valid email.';
+        elseif (strlen($pass) < 6) $error = 'The password must be at least 6 characters.';
+        elseif ($this->UserModel->email_exists($email)) $error = 'That email is already used by another account.';
+        elseif ($new_org !== '') {
+            if ($this->OrganizationModel->find_by_name($new_org)) $error = 'That organization already exists. Choose it from the list instead.';
+        } elseif (!$org_id || !$this->OrganizationModel->find($org_id)) {
+            $error = 'Choose an organization, or type the name of a new one.';
+        } elseif ($this->UserModel->manager_of($org_id)) {
+            $error = 'That organization already has a manager account.';
+        }
+
+        if ($error) {   // show the form again with what was typed
+            $this->call->view('admin/accounts', array(
+                'me' => $this->me, 'managers' => $this->UserModel->managers(), 'orgs' => $this->OrganizationModel->all(),
+                'message' => null, 'error' => $error,
+                'old' => array('full_name' => $name, 'email' => $email, 'organization_id' => $org_id, 'new_organization' => $new_org)
+            ));
+            return;
+        }
+
+        if ($new_org !== '') {
+            $this->OrganizationModel->create(array('organization_name' => $new_org, 'description' => '', 'created_by' => $this->me['id']));
+            $org_id = (int) $this->OrganizationModel->find_by_name($new_org)['id'];
+        }
+        $this->UserModel->create(array(
+            'full_name' => $name, 'email' => $email, 'password_hash' => password_hash($pass, PASSWORD_DEFAULT),
+            'role' => 'organizer', 'organization_id' => $org_id
+        ));
+        $this->session->set_flashdata('message', 'Account created for ' . $name . '. They can log in with ' . $email . ' and the password you set.');
+        redirect('admin/accounts');
     }
 }

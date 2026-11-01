@@ -4,7 +4,7 @@ require_once __DIR__ . '/ApiBase.php';
 
 class ApiController extends ApiBase {
 
-    // ---------- auth ----------
+    // auth 
     public function login() {
         $b    = $this->input_data();
         $pass = $b['password'] ?? '';
@@ -56,7 +56,7 @@ class ApiController extends ApiBase {
         $this->send_json(['programs' => array_map(fn($o) => ['id' => $o['id'], 'name' => $o['organization_name']], $rows)]);
     }
 
-    // ---------- students ----------
+    // students 
     private function visible_to($event, $me) {
         if (in_array($me['role'], ['admin', 'organizer'])) return true;
         if (!in_array($event['status'], ['approved', 'cancelled'])) return false;
@@ -88,7 +88,7 @@ class ApiController extends ApiBase {
         $token = Qr_service::token($id, $me['id']);
         $this->RegistrationModel->register($id, $me['id'], Qr_service::token_hash($token));
 
-        try {   // a mail problem must never block the registration
+        try {   
             $html = '<h2>You are registered: ' . htmlspecialchars($event['title']) . '</h2>'
                   . '<p>' . htmlspecialchars($event['location']) . '<br>' . date('M d, Y g:i A', strtotime($event['start_at'])) . '</p>'
                   . '<p>Show the attached QR code at the entrance to record your attendance.</p>';
@@ -99,7 +99,7 @@ class ApiController extends ApiBase {
         $this->send_json(['message' => 'Registered! Your QR pass is ready.'], 201);
     }
 
-    // "My registered events", "My Attendance", the QR code and fines, all in one call
+    // "My registered events", 
     public function my_registrations() {
         $me      = $this->need(['student']);
         $regs    = $this->RegistrationModel->for_student($me['id']);

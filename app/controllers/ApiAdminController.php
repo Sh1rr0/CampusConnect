@@ -4,7 +4,7 @@ require_once __DIR__ . '/ApiBase.php';
 
 class ApiAdminController extends ApiBase {
 
-    // ================= organizations (admin) =================
+    //organizations (admin) 
     public function organizations() {
         $this->need(['admin']);
         $this->send_json(['organizations' => $this->OrganizationModel->all()]);
@@ -38,7 +38,7 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => 'Organization deleted.']);
     }
 
-    // ================= organization manager accounts (admin) =================
+    // organization manager accounts (admin) 
     public function managers() {
         $this->need(['admin']);
         $this->send_json(['managers' => $this->UserModel->managers()]);
@@ -100,7 +100,7 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => 'Manager deleted.']);
     }
 
-    // ================= events (admin + manager) =================
+    //  events (admin + manager)
     public function events() {
         $me     = $this->need(['admin', 'organizer']);
         $events = $me['role'] === 'admin' ? $this->EventModel->admin_list() : $this->EventModel->for_organization($me['organization_id']);
@@ -114,7 +114,7 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['events' => $events]);
     }
 
-    // multipart/form-data when a poster file is included
+    
     public function create_event() {
         $me = $this->need(['admin', 'organizer']);
         $b  = $this->input_data();
@@ -158,7 +158,7 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => $me['role'] === 'organizer' ? 'Saved and resubmitted for approval.' : 'Event updated.']);
     }
 
-    // Admin: permanent delete (with registrations only if confirm = "DELETE"). Manager: only when nobody has registered.
+    // Admin: permanent delete 
     public function delete_event($id) {
         $me    = $this->need(['admin', 'organizer']);
         $event = $this->load_managed_event($id, $me);
@@ -191,20 +191,26 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => 'Event reopened.', 'status' => $new]);
     }
 
-    // Admin approves or rejects (body: status = approved|rejected, note = reason shown to the manager)
+    // Admin approves or rejects 
     public function set_status($id) {
-        $this->need(['admin']);
-        $b = $this->input_data(); $status = $b['status'] ?? '';
-        $event = $this->EventModel->find($id);
-        if (!$event) $this->send_json(['error' => 'Event not found.'], 404);
-        if (!in_array($status, ['approved', 'rejected'])) $this->send_json(['error' => 'Invalid status.'], 422);
-        if ($event['status'] === 'cancelled') $this->send_json(['error' => 'Reopen the event first.'], 409);
+    $this->need(['admin']);
+    $b      = $this->input_data();
+    $status = $b['status'] ?? '';
+    $note   = mb_substr(trim($b['note'] ?? ''), 0, 255);   // the column holds 255 characters
+    $event  = $this->EventModel->find($id);
 
-        $this->EventModel->update_event($id, ['status' => $status, 'review_note' => $status === 'rejected' ? trim($b['note'] ?? '') : null]);
-        $this->send_json(['message' => 'Event ' . $status . '.', 'status' => $status]);
+    if (!$event) $this->send_json(['error' => 'Event not found.'], 404);
+    if (!in_array($status, ['approved', 'rejected'])) $this->send_json(['error' => 'Invalid status.'], 422);
+    if ($event['status'] !== 'pending') $this->send_json(['error' => 'This event is not waiting for review.'], 409);
+    if ($status === 'rejected' && mb_strlen($note) < 5) {
+        $this->send_json(['error' => 'Write a reason (at least 5 characters) so the organization knows what to fix.'], 422);
     }
 
-    // Set the fine amount (admin any time; manager until the event has ended)
+    $this->EventModel->update_event($id, ['status' => $status, 'review_note' => $status === 'rejected' ? $note : null]);
+    $this->send_json(['message' => $status === 'approved' ? 'Event approved.' : 'Event rejected. The organization can see your reason.', 'status' => $status]);
+}
+
+    
     public function set_fine($id) {
         $me    = $this->need(['admin', 'organizer']);
         $event = $this->load_managed_event($id, $me);
@@ -217,7 +223,7 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => 'Fine amount updated.']);
     }
 
-    // ================= change requests =================
+    //  change requests 
     public function request_change($id) {   // manager, for an approved event
         $me    = $this->need(['organizer']);
         $event = $this->load_managed_event($id, $me);
@@ -258,16 +264,20 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['message' => 'Change approved and applied.']);
     }
 
-    public function reject_change($id) {
-        $me  = $this->need(['admin']);
-        $req = $this->ChangeRequestModel->find($id);
-        if (!$req) $this->send_json(['error' => 'Request not found.'], 404);
-        if ($req['status'] !== 'pending') $this->send_json(['error' => 'This request was already reviewed.'], 409);
-        $this->ChangeRequestModel->review($id, 'rejected', trim($this->input_data()['note'] ?? ''), $me['id']);
-        $this->send_json(['message' => 'Change request rejected.']);
-    }
+   public function reject_change($id) {
+    $me  = $this->need(['admin']);
+    $req = $this->ChangeRequestModel->find($id);
+    if (!$req) $this->send_json(['error' => 'Request not found.'], 404);
+    if ($req['status'] !== 'pending') $this->send_json(['error' => 'This request was already reviewed.'], 409);
 
-    // ================= attendance =================
+    $note = mb_substr(trim($this->input_data()['note'] ?? ''), 0, 255);
+    if (mb_strlen($note) < 5) $this->send_json(['error' => 'Write a reason (at least 5 characters) so the organization knows what to fix.'], 422);
+
+    $this->ChangeRequestModel->review($id, 'rejected', $note, $me['id']);
+    $this->send_json(['message' => 'Change request rejected. The organization can see your reason.']);
+}
+
+    // attendance
     public function attendees($id) {   // registrations, who attended / missed, scans, fines
         $me    = $this->need(['admin', 'organizer']);
         $event = $this->load_managed_event($id, $me);
@@ -305,8 +315,8 @@ class ApiAdminController extends ApiBase {
         $this->send_json(['ok' => true, 'message' => $label . ' recorded: ' . $reg['full_name']]);
     }
 
-    // ================= fines =================
-    // GET ?event_id=&status=uncharged|unpaid|paid&q=name-or-email   (managers only see their organization)
+    // fines 
+   
     public function fines() {
         $me   = $this->need(['admin', 'organizer']);
        $org = $me['role'] === 'organizer' ? $me['organization_id'] : ((int) ($_GET['organization_id'] ?? 0) ?: null);

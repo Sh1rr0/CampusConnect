@@ -13,4 +13,5 @@ class OrganizationModel extends Model {
     public function create($data) { return $this->db->table('organizations')->insert($data); }
     public function update_org($id, $data) { return $this->db->table('organizations')->where('id', $id)->update($data); }
     public function delete_org($id) { return $this->db->table('organizations')->where('id', $id)->delete(); }
+    public function find_by_name($name) { return $this->db->raw($this->sel . " WHERE o.organization_name = ?", [$name])->fetch(PDO::FETCH_ASSOC); }
 }
