@@ -9,6 +9,9 @@
     <p><?= date('M d, Y g:i A', strtotime($e['start_at'])) ?></p>
     <p>Registered: <?= (int) $e['registered_count'] ?><?= $e['capacity'] ? ' / ' . (int) $e['capacity'] : '' ?></p>
     <a class="btn" href="<?= site_url('events/' . $e['id']) ?>">View</a>
+    <span class="badge <?= $e['audience'] === 'campus' ? 'b-ok' : 'b-wait' ?>">
+    <?= $e['audience'] === 'campus' ? 'Open to all students' : 'For ' . htmlspecialchars($e['organization_name']) ?>
+    </span>
   </div>
 <?php endforeach; ?>
 <?php include __DIR__ . '/../partials/footer.php'; ?>

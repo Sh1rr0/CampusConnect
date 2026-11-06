@@ -3,9 +3,16 @@
 <?php if (!empty($error)): ?><div class="msg err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 <form class="card" method="post" action="<?= site_url('events/create') ?>" enctype="multipart/form-data">
   <label>Organization</label>
+ <?php if ($me['role'] === 'admin'): ?>
   <select name="organization_id" required>
-    <?php foreach ($orgs as $o): ?><option value="<?= $o['id'] ?>"><?= htmlspecialchars($o['organization_name']) ?></option><?php endforeach; ?>
+    <option value="">Select organization</option>
+    <?php foreach ($orgs as $o): ?>
+      <option value="<?= $o['id'] ?>"><?= htmlspecialchars($o['organization_name']) ?></option>
+    <?php endforeach; ?>
   </select>
+<?php else: ?>
+  <input value="<?= htmlspecialchars($my_org) ?>" disabled>
+<?php endif; ?>
   <label>Title</label><input name="title" required>
   <label>Description</label><textarea name="description" rows="4"></textarea>
   <label>Location</label><input name="location" required>

@@ -13,15 +13,18 @@
   <div class="msg err">This event has been cancelled.</div>
 <?php elseif (empty($me['role'])): ?>
     <a class="btn" href="<?= site_url('login') ?>">Login to register</a>
-  <?php elseif ($me['role'] === 'student'): ?>
-    <?php if ($registered): ?>
-      <a class="btn green" href="<?= site_url('my-events') ?>">View my QR pass</a>
-    <?php else: ?>
-      <form method="post" action="<?= site_url('events/' . $event['id'] . '/register') ?>" style="display:inline">
-        <button class="btn" type="submit">Register</button>
-      </form>
-    <?php endif; ?>
+ <?php elseif ($me['role'] === 'student'): ?>
+  <?php if ($registered): ?>
+    <a class="btn green" href="<?= site_url('my-events') ?>">View my QR pass</a>
+  <?php elseif (!$can_join): ?>
+    <div class="msg err">This event is for <?= htmlspecialchars($event['organization_name']) ?> students only.
+      You can join your own program's events and USG events.</div>
+  <?php else: ?>
+    <form method="post" action="<?= site_url('events/' . $event['id'] . '/register') ?>" style="display:inline">
+      <button class="btn" type="submit">Register</button>
+    </form>
   <?php endif; ?>
+<?php endif; ?>
   <a class="btn gray" target="_blank" href="<?= htmlspecialchars(cal_link($event)) ?>">Add to Google Calendar</a>
 </div>
 <?php include __DIR__ . '/../partials/footer.php'; ?>

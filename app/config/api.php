@@ -143,6 +143,20 @@ $config['users_table'] = 'users';
 | This is the name of the table that will store the Refresh Token.
 |
 */
+
+/*
+|--------------------------------------------------------------------------
+| Access-Control-Allow-Origin
+|--------------------------------------------------------------------------
+|
+| Access-Control-Allow-Origin - change this to your domain if
+| already deployed. '*' allows any website to call your API from
+| a browser, so set your real domain in production.
+|
+*/
+$config['allow_origin'] = getenv('CORS_ALLOW_ORIGIN') ?: 'https://campusconnect-front-end.onrender.com';
+
+
 $config['refresh_token_table'] = 'refresh_tokens';
 
 /*

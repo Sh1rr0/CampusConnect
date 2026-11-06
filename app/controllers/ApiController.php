@@ -25,21 +25,23 @@ class ApiController extends ApiBase {
     }
 
     public function signup() {
-        $b = $this->input_data();
-        $name = trim($b['full_name'] ?? ''); $email = trim($b['email'] ?? ''); $pass = $b['password'] ?? '';
-        $org  = (int) ($b['organization_id'] ?? 0) ?: null;
+    $b = $this->input_data();
+    $name = trim($b['full_name'] ?? ''); $email = trim($b['email'] ?? ''); $pass = $b['password'] ?? '';
+    $org  = (int) ($b['organization_id'] ?? 0);
 
-        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $this->send_json(['error' => 'Enter your name and a valid email.'], 422);
-        if (strlen($pass) < 6) $this->send_json(['error' => 'Password must be at least 6 characters.'], 422);
-        if ($org && !$this->OrganizationModel->find($org)) $this->send_json(['error' => 'Unknown program.'], 422);
-        if ($this->UserModel->email_exists($email)) $this->send_json(['error' => 'That email is already registered.'], 409);
+    if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) $this->send_json(['error' => 'Enter your name and a valid email.'], 422);
+    if (strlen($pass) < 6) $this->send_json(['error' => 'Password must be at least 6 characters.'], 422);
 
-        $this->UserModel->create([
-            'full_name' => $name, 'email' => $email, 'password_hash' => password_hash($pass, PASSWORD_DEFAULT),
-            'role' => 'student', 'organization_id' => $org
-        ]);
-        $this->send_json(['message' => 'Account created. You can log in now.'], 201);
-    }
+    $program = $org ? $this->OrganizationModel->find($org) : null;
+    if (!$program || !$program['is_program']) $this->send_json(['error' => 'Choose your course or program.'], 422);
+    if ($this->UserModel->email_exists($email)) $this->send_json(['error' => 'That email is already registered.'], 409);
+
+    $this->UserModel->create([
+        'full_name' => $name, 'email' => $email, 'password_hash' => password_hash($pass, PASSWORD_DEFAULT),
+        'role' => 'student', 'organization_id' => $org
+    ]);
+    $this->send_json(['message' => 'Account created. You can log in now.'], 201);
+}
 
     public function logout() {
         $this->session->unset_userdata(['user_id', 'full_name', 'email', 'role', 'organization_id']);
@@ -51,17 +53,19 @@ class ApiController extends ApiBase {
         $this->send_json(['user' => $me['id'] ? $this->with_org($me) : null]);
     }
 
-    public function programs() {   // for the signup dropdown
-        $rows = $this->OrganizationModel->all();
-        $this->send_json(['programs' => array_map(fn($o) => ['id' => $o['id'], 'name' => $o['organization_name']], $rows)]);
-    }
+ public function programs() {   // sign-up dropdown: only organizations marked as programs
+    $rows = array_filter($this->OrganizationModel->all(), fn($o) => $o['is_program'] && !$o['is_campus_wide']);
+    $this->send_json(['programs' => array_values(array_map(
+        fn($o) => ['id' => $o['id'], 'name' => $o['organization_name']], $rows))]);
+}
 
     // students 
-    private function visible_to($event, $me) {
-        if (in_array($me['role'], ['admin', 'organizer'])) return true;
-        if (!in_array($event['status'], ['approved', 'cancelled'])) return false;
-        return $event['scope'] === 'school' || ($me['organization_id'] && (int) $event['organization_id'] === (int) $me['organization_id']);
-    }
+   private function visible_to($event, $me) {
+    if (in_array($me['role'], ['admin', 'organizer'])) return true;
+    if (!in_array($event['status'], ['approved', 'cancelled'])) return false;
+    return $event['audience'] === 'campus'
+        || $this->OrganizationModel->sees($me['organization_id'], $event['organization_id']);
+}
 
     public function events() {
         $me = $this->current_user();
@@ -74,14 +78,18 @@ class ApiController extends ApiBase {
         if (!$event || !$this->visible_to($event, $me)) $this->send_json(['error' => 'Event not found.'], 404);
         $this->send_json([
             'event' => $event,
-            'registered' => $me['id'] ? $this->RegistrationModel->exists($id, $me['id']) : false
+            'registered' => $me['id'] ? $this->RegistrationModel->exists($id, $me['id']) : false,
+            'can_join' => $me['role'] === 'student' ? $this->OrganizationModel->can_join($me['organization_id'], $event) : null
         ]);
     }
 
     public function register($id) {
         $me    = $this->need(['student']);
         $event = $this->EventModel->find($id);
-        if (!$event || $event['status'] !== 'approved' || !$this->visible_to($event, $me)) $this->send_json(['error' => 'Event not available.'], 404);
+        if (!$event || $event['status'] !== 'approved') $this->send_json(['error' => 'Event not available.'], 404);
+        if (!$this->OrganizationModel->can_join($me['organization_id'], $event)) {
+        $this->send_json(['error' => 'This event is for ' . $event['organization_name'] . ' students only. You can join your own program\'s events and USG events.'], 403);
+        }
         if ($this->RegistrationModel->exists($id, $me['id'])) $this->send_json(['error' => 'You are already registered for this event.'], 409);
         if ($event['capacity'] && $event['registered_count'] >= $event['capacity']) $this->send_json(['error' => 'Sorry, this event is full.'], 409);
 

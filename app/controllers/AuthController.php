@@ -23,7 +23,8 @@ class AuthController extends Controller {
                 'user_id'   => $user['id'],
                 'full_name' => $user['full_name'],
                 'email'     => $user['email'],
-                'role'      => $user['role']
+                'role'      => $user['role'],
+                'organization_id' => $user['organization_id']
             ));
             redirect(in_array($user['role'], array('admin', 'organizer')) ? 'admin' : 'events');
         }

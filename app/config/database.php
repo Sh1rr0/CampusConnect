@@ -91,7 +91,6 @@ $database['main'] = array(
     'password'  => getenv('DB_PASSWORD') ?: '',
     'database'  => getenv('DB_NAME') ?: getenv('DB_DATABASE') ?: '',
     'charset'   => 'utf8mb4',
-    'dbprefix'  => '',
-    
+    'dbprefix'  => '',  
 );
 ?>

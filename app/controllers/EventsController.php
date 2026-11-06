@@ -10,6 +10,7 @@ class EventsController extends Controller {
         parent::__construct();
         $this->call->model('EventModel');
         $this->call->model('RegistrationModel');
+        $this->call->model('OrganizationModel');
     }
 
     private function me() {
@@ -17,8 +18,16 @@ class EventsController extends Controller {
             'id'    => $this->session->userdata('user_id'),
             'name'  => $this->session->userdata('full_name'),
             'email' => $this->session->userdata('email'),
-            'role'  => $this->session->userdata('role')
+            'role'  => $this->session->userdata('role'),
+            'organization_id' => $this->session->userdata('organization_id')
         );
+    }
+
+    private function show_create_form($me, $error = null) {
+    $orgs   = $this->EventModel->organizations();   // every organization
+    $my_org = '';
+    foreach ($orgs as $o) if ((int) $o['id'] === (int) $me['organization_id']) $my_org = $o['organization_name'];
+    $this->call->view('events/create', array('me' => $me, 'orgs' => $orgs, 'my_org' => $my_org, 'error' => $error));
     }
 
     public function index() {
@@ -35,53 +44,60 @@ class EventsController extends Controller {
             'event'      => $event,
             'me'         => $me,
             'registered' => $me['id'] ? $this->RegistrationModel->exists($id, $me['id']) : false,
-            'message'    => $this->session->flashdata('message')
+            'message'    => $this->session->flashdata('message'),
+            'can_join' => $me['role'] === 'student' ? $this->OrganizationModel->can_join($me['organization_id'], $event) : false,
         ));
     }
 
     public function create() {
         $me = $this->me();
         if (!in_array($me['role'], array('organizer', 'admin'))) redirect('login');
-        $this->call->view('events/create', array('me' => $me, 'orgs' => $this->EventModel->organizations(), 'error' => null));
+        $this->show_create_form($me);
+    }
+public function store() {
+    $me = $this->me();
+    if (!in_array($me['role'], array('organizer', 'admin'))) redirect('login');
+
+    // Managers always create for their own organization. Admins choose one.
+    $org_id = $me['role'] === 'admin' ? (int) $this->io->post('organization_id') : (int) $me['organization_id'];
+    $valid  = array_map('intval', array_column($this->EventModel->organizations(), 'id'));
+    if (!$org_id || !in_array($org_id, $valid)) {
+        $this->show_create_form($me, $me['role'] === 'admin'
+            ? 'Choose an organization.'
+            : 'Your account is not linked to an organization. Ask the admin to link it.');
+        return;
     }
 
-    public function store() {
-        $me = $this->me();
-        if (!in_array($me['role'], array('organizer', 'admin'))) redirect('login');
+    $start = strtotime($this->io->post('start_at'));
+    $end   = strtotime($this->io->post('end_at'));
+    if (!$start || !$end || $end <= $start) {
+        $this->show_create_form($me, 'End time must be after the start time.');
+        return;
+    }
 
-        $start = strtotime($this->io->post('start_at'));
-        $end   = strtotime($this->io->post('end_at'));
-        if (!$start || !$end || $end <= $start) {
-            $this->call->view('events/create', array('me' => $me, 'orgs' => $this->EventModel->organizations(),
-                'error' => 'End time must be after the start time.'));
-            return;
-        }
+    $poster = null;   // Cloudinary
+    if (!empty($_FILES['poster']['tmp_name']) && $_FILES['poster']['error'] === UPLOAD_ERR_OK
+        && $_FILES['poster']['size'] < 5 * 1024 * 1024 && @getimagesize($_FILES['poster']['tmp_name'])) {
+        $poster = Cloudinary_service::upload($_FILES['poster']['tmp_name']);
+    }
 
-        $poster = null;   // Cloudinary
-        if (!empty($_FILES['poster']['tmp_name']) && $_FILES['poster']['error'] === UPLOAD_ERR_OK
-            && $_FILES['poster']['size'] < 5 * 1024 * 1024 && @getimagesize($_FILES['poster']['tmp_name'])) {
-            $poster = Cloudinary_service::upload($_FILES['poster']['tmp_name']);
-        }
+    $fine = $this->io->post('fine_per_session');
+    $fine = ($fine === null || $fine === '') ? 25 : max(0, (float) $fine);
 
-        $fine = $this->io->post('fine_per_session');
-        $fine = ($fine === null || $fine === '') ? 25 : max(0, (float) $fine);
-        
-        $this->EventModel->create(array(
-            'organization_id' => (int) $this->io->post('organization_id'),
-            'created_by'      => $me['id'],
-            'title'           => trim($this->io->post('title')),
-            'description'     => $this->io->post('description'),
-            'location'        => trim($this->io->post('location')),
-            'start_at'        => date('Y-m-d H:i:s', $start),
-            'end_at'          => date('Y-m-d H:i:s', $end),
-            'capacity'        => (int) $this->io->post('capacity') ?: null,
-            'poster_url'      => $poster,
-            'status'          => $me['role'] === 'admin' ? 'approved' : 'pending',
-            'fine_per_session' => $fine
-        ));
-        redirect('admin');
-
-        
+    $this->EventModel->create(array(
+        'organization_id'  => $org_id,
+        'created_by'       => $me['id'],
+        'title'            => trim($this->io->post('title')),
+        'description'      => $this->io->post('description'),
+        'location'         => trim($this->io->post('location')),
+        'start_at'         => date('Y-m-d H:i:s', $start),
+        'end_at'           => date('Y-m-d H:i:s', $end),
+        'capacity'         => (int) $this->io->post('capacity') ?: null,
+        'poster_url'       => $poster,
+        'status'           => $me['role'] === 'admin' ? 'approved' : 'pending',
+        'fine_per_session' => $fine
+    ));
+    redirect('admin');
     }
 
     public function register($id) {
@@ -90,6 +106,11 @@ class EventsController extends Controller {
 
         $event = $this->EventModel->find($id);
         if (!$event || $event['status'] !== 'approved') { show_404(); return; }
+        if (!$this->OrganizationModel->can_join($me['organization_id'], $event)) {
+        $this->session->set_flashdata('message',
+        'This event is for ' . $event['organization_name'] . ' students only. You can join your own program\'s events and USG events.');
+         redirect('events/' . $id);
+        }
 
         if ($this->RegistrationModel->exists($id, $me['id'])) {
             $msg = 'You are already registered for this event.';

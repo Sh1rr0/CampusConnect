@@ -2,7 +2,8 @@
 defined('PREVENT_DIRECT_ACCESS') OR exit('No direct script access allowed');
 
 class EventModel extends Model {
-    private $base = "SELECT e.*, COALESCE(o.organization_name, 'School-wide') AS organization_name,
+   private $base = "SELECT e.*, COALESCE(o.organization_name, 'School-wide') AS organization_name,
+    CASE WHEN e.scope = 'school' OR COALESCE(o.is_campus_wide, 0) = 1 THEN 'campus' ELSE 'program' END AS audience,
     (SELECT COUNT(*) FROM registrations r WHERE r.event_id = e.id) AS registered_count,
     (SELECT COUNT(DISTINCT a.registration_id) FROM registrations r
        JOIN attendance a ON a.registration_id = r.id WHERE r.event_id = e.id) AS present_count,
@@ -47,14 +48,17 @@ class EventModel extends Model {
     }
 
     // Students: school-wide events plus events of their own program (no program = school-wide only)
-    public function get_visible($organization_id) {
+  public function get_visible($organization_id) {
+    $sql = $this->base . " WHERE e.status = 'approved' AND (e.scope = 'school' OR COALESCE(o.is_campus_wide, 0) = 1";
+    $params = [];
     if ($organization_id) {
-        return $this->db->raw($this->base . " WHERE e.status = 'approved' AND (e.scope = 'school' OR e.organization_id = ?)
-                               ORDER BY e.start_at ASC", [$organization_id])->fetchAll(PDO::FETCH_ASSOC);
+        $sql .= " OR e.organization_id = ?
+                  OR e.organization_id IN (SELECT linked_organization_id FROM organization_links WHERE organization_id = ?)";
+        $params = [$organization_id, $organization_id];
     }
-    return $this->db->raw($this->base . " WHERE e.status = 'approved' AND e.scope = 'school' ORDER BY e.start_at ASC")
-                    ->fetchAll(PDO::FETCH_ASSOC);
-    }
+    $sql .= ") ORDER BY e.start_at ASC";
+    return $this->db->raw($sql, $params)->fetchAll(PDO::FETCH_ASSOC);
+}
 // Organization managers: every event of their organization, any status
     public function for_organization($organization_id) {
     return $this->db->raw($this->base . " WHERE e.organization_id = ? ORDER BY e.start_at DESC", [$organization_id])
