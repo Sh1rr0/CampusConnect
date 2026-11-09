@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
+#Timezone
+RUN echo "date.timezone=Asia/Manila" > /usr/local/etc/php/conf.d/timezone.ini
+
 # Allow .htaccess overrides
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 

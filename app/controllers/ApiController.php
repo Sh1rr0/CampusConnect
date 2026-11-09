@@ -122,4 +122,6 @@ class ApiController extends ApiBase {
         unset($r);
         $this->send_json(['registrations' => $regs, 'total_fines' => $total, 'slots' => Fine_service::$slots]);
     }
+
+    public function ping() { $this->send_json(['ok' => true]); }
 }

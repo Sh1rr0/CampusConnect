@@ -115,3 +115,5 @@ $router->post('/api/admin/change-requests/{id}/reject', 'ApiAdminController::rej
 $router->post('/api/admin/checkin', 'ApiAdminController::checkin');
 $router->get('/api/admin/fines', 'ApiAdminController::fines');
 $router->post('/api/admin/fines/{id}/paid', 'ApiAdminController::mark_paid');
+
+$router->get('/api/ping', 'ApiController::ping');

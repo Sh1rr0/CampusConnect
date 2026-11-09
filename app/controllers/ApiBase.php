@@ -8,23 +8,22 @@ require_once __DIR__ . '/../libraries/Fine_service.php';
 
 class ApiBase extends Controller {
 
-    public function __construct() {
-        parent::__construct();
-
-        // Handle CORS before loading API models
-        $this->set_cors();
-
-        foreach ([
-            'UserModel',
-            'EventModel',
-            'RegistrationModel',
-            'OrganizationModel',
-            'FineModel',
-            'ChangeRequestModel'
-        ] as $m) {
-            $this->call->model($m);
-        }
+   public function __construct() {
+    parent::__construct();
+    date_default_timezone_set('Asia/Manila');           // PHP clock (also used to decide when an event has ended)
+    $this->db->raw("SET time_zone = '+08:00'");         // MySQL: scan times, registered_at and similar in Philippine time
+    foreach ([
+        'UserModel', 
+        'EventModel', 
+        'RegistrationModel', 
+        'OrganizationModel', 
+        'FineModel', 
+        'ChangeRequestModel'] 
+        as $m) 
+        {
+        $this->call->model($m);
     }
+}
 
     /**
      * Handle Cross-Origin Resource Sharing (CORS)
@@ -198,23 +197,12 @@ class ApiBase extends Controller {
     /**
      * Admin only: school-wide or program event for selected organization
      */
-    protected function scope_fields($b) {
-        if (($b['scope'] ?? 'school') !== 'program') {
-            return ['school', null, null];
-        }
-
-        $org = (int) ($b['organization_id'] ?? 0);
-
-        if (!$org || !$this->OrganizationModel->find($org)) {
-            return [
-                null,
-                null,
-                'Choose the organization for this program event.'
-            ];
-        }
-
-        return ['program', $org, null];
-    }
+   protected function scope_fields($b) {
+    $org = (int) ($b['organization_id'] ?? 0);
+    if (!$org) return ['school', null, null];
+    if (!$this->OrganizationModel->find($org)) return [null, null, 'Choose a valid organization.'];
+    return ['program', $org, null];
+}
 
     /**
      * Upload event poster to Cloudinary
